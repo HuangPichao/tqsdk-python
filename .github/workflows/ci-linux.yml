@@ -32,7 +32,7 @@ jobs:
       with:
         node-version: 12.x
 
-    - name: npm install, build, and test
+    - name: web package
       run: |
         cd ./web/
         yarn install --frozen-lockfile
