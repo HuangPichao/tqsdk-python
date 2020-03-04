@@ -158,9 +158,26 @@ class TqApi(object):
                 fh.setFormatter(log_format)
                 self._logger.addHandler(fh)
 
-        # 记录参数
-        self._account = TqSim() if account is None else account
-        self._backtest = backtest
+        # 解析命令行参数, 命令行参数优先级高于策略文件中参数
+        args = TqWebHelper.parser_arguments()
+        if args["_action"] == "run":
+            # 运行模式下，账户参数冲突需要抛错，提示用户
+            if isinstance(account, TqAccount) and \
+                    (account._account_id != args["_account_id"] or account._broker_id != args["_broker_id"]):
+                raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
+            self._account = TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
+            self._backtest = None
+        elif args["_action"] == "backtest":
+            self._account = TqSim(args["_init_balance"])
+            self._backtest = TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
+                                                       end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
+        elif args["_action"] == "replay":
+            self._account = TqSim() if account is None else account
+            self._backtest = TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
+        else:
+            self._account = TqSim() if account is None else account
+            self._backtest = backtest
+        self._web_gui = args["_http_server_address"] if args["_http_server_address"] else web_gui
         self._ins_url = TqApi.DEFAULT_INS_URL
         self._md_url = TqApi.DEFAULT_MD_URL
         self._td_url = TqApi.DEFAULT_TD_URL
@@ -246,7 +263,6 @@ class TqApi(object):
             self._web_gui = False # 如果是slave, _web_gui 一定是 False
             return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
-        self._web_gui = web_gui
         # 初始化
         if sys.platform.startswith("win"):
             self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁

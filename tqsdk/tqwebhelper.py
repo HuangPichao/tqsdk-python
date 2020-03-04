@@ -27,27 +27,6 @@ class TqWebHelper(object):
         self._http_server_host = ip if ip else "0.0.0.0"
         self._http_server_port = int(port) if port else 0
 
-        args = TqWebHelper.parser_arguments()
-        if args:
-            if args["_action"] == "run":
-                # 运行模式下，账户参数冲突需要抛错，提示用户
-                if isinstance(self._api._account, tqsdk.api.TqAccount) and \
-                        (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
-                    raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
-                self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
-                self._api._backtest = None
-            elif args["_action"] == "backtest":
-                self._api._account = tqsdk.api.TqSim(args["_init_balance"])
-                self._api._backtest = tqsdk.api.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
-                                            end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
-            elif args["_action"] == "replay":
-                self._api._backtest = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
-
-            if args["_http_server_address"]:
-                self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
-                ip, port = TqWebHelper.parse_url(args["_http_server_address"])
-                self._http_server_host = ip if ip else "0.0.0.0"
-                self._http_server_port = int(port) if port else 0
 
     async def _run(self, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
         if not self._api._web_gui:
